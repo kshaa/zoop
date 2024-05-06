@@ -19,7 +19,7 @@ use bevy_rapier2d::prelude::*;
 use bevy_sprite3d::Sprite3dParams;
 
 pub fn init_scene(config: &GameConfig) -> GameState {
-    println!("Initiating scene state");
+    info!("Initiating scene state");
 
     let building_half_size = config.meters2pix(10.0);
 
@@ -102,7 +102,7 @@ pub fn destroy_scene(
     mut rapier_force_events: ResMut<Events<ContactForceEvent>>,
     mut commands: Commands,
 ) {
-    println!("Destroying rapier context");
+    info!("Destroying rapier context");
     for (entity, _) in player_entities.iter() {
         commands.entity(entity).despawn();
     }
@@ -226,7 +226,7 @@ pub fn spawn_scene(
     spawn_pool: &mut Vec<Entity>,
     rip: &mut RollbackIdProvider,
 ) {
-    println!("Spawning scene from state");
+    info!("Spawning scene from state");
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
         brightness: 1.0,
@@ -236,7 +236,7 @@ pub fn spawn_scene(
         match entity {
             GameEntity::Stub() => (),
             GameEntity::Car(car) => {
-                println!("Spawning car for player {}", car.player.handle);
+                info!("Spawning car for player {}", car.player.handle);
                 setup_car(
                     spritesheets,
                     sprite_params,

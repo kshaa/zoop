@@ -4,7 +4,7 @@ use crate::domain::game_state::GameState;
 use crate::domain::ggrs_config::GGRSConfig;
 use crate::domain::rapier_rollback_state::RapierRollbackState;
 use crate::services::websocket::*;
-use crate::systems::read_controls::read_controls;
+use crate::systems::read_network_controls::read_network_controls;
 use crate::systems::rollback_rapier_context::EnablePhysicsAfter;
 use bevy::prelude::*;
 use bevy_ggrs::*;
@@ -22,7 +22,7 @@ pub fn build_ggrs(game: &mut App, config: &GameConfig) {
         // define frequency of rollback game logic update
         .with_update_frequency(usize::from(config.fps))
         // define system that returns inputs given a player handle, so GGRS can send the inputs around
-        .with_input_system(read_controls)
+        .with_input_system(read_network_controls)
         // register types of components AND resources you want to be rolled back
         .register_rollback_resource::<RapierRollbackState>()
         .register_rollback_resource::<CurrentFrame>()

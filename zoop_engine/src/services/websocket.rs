@@ -53,7 +53,8 @@ impl fmt::Debug for WrappedWsReceiver {
 impl NonBlockingWebSocket {
     /// Connects to a Websocket address in a non-blocking manner.
     pub fn connect(address: String) -> Result<Self, Error> {
-        let (sender, receiver) = match ewebsock::connect(address.clone()) {
+        let options = ewebsock::Options::default();
+        let (sender, receiver) = match ewebsock::connect(address.clone(), options) {
             Ok(c) => c,
             Err(e) => return Err(e),
         };

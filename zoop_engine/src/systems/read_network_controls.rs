@@ -5,7 +5,7 @@ use crate::systems::rollback_rapier_context::PhysicsEnabled;
 use bevy::prelude::*;
 use ggrs::PlayerHandle;
 
-pub fn read_controls(
+pub fn read_network_controls(
     _handle: In<PlayerHandle>,
     keyboard_input: Res<Input<KeyCode>>,
     physics_enabled: Res<PhysicsEnabled>,
@@ -28,14 +28,14 @@ pub fn read_controls(
             && !frame_hash.sent
             && validatable_frame.is_validatable(frame_hash.frame)
         {
-            info!("Sending data {:?}", frame_hash);
+            trace!("Sending data {:?}", frame_hash);
             last_confirmed_frame = frame_hash.frame;
             last_confirmed_hash = frame_hash.rapier_checksum;
             frame_hash.sent = true;
         }
     }
 
-    if !physics_enabled.0 {
+    let controls = if !physics_enabled.0 {
         Controls::empty(last_confirmed_hash, last_confirmed_frame)
     } else {
         Controls::from_wasd(
@@ -43,5 +43,8 @@ pub fn read_controls(
             last_confirmed_hash,
             last_confirmed_frame,
         )
-    }
+    };
+
+    trace!("Configured controls: {:?}", &controls);
+    controls
 }

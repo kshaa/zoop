@@ -140,6 +140,7 @@ pub fn build_game(game: &mut App, config: GameConfig) {
     let game_schedule_label = GGRSSchedule;
 
     // Configure networking
+    info!("Building game loop");
     if config.network.is_some() {
         // Init network and configure schedule
         build_network(game, &config);
@@ -285,6 +286,7 @@ fn setup_graphics(config: Res<GameConfig>, mut commands: Commands) {
             ..default()
         });
 }
+use crate::domain::controls::Controls;
 
 fn move_camera_system(
     config: Res<GameConfig>,
@@ -295,8 +297,12 @@ fn move_camera_system(
 ) {
     let following_car_index = 0;
 
-    let (game_input, _) = if config.network.is_some() {
-        inputs.as_ref().unwrap()[following_car_index]
+    let (game_input, _): (Controls, InputStatus) = if config.network.is_some() {  
+        let network_inputs = inputs.as_ref();
+        match network_inputs {
+            Some(inputs) => inputs[following_car_index],
+            None => (Controls::unknown(), InputStatus::Predicted)
+        }
     } else {
         (Controls::for_nth_player(&fallback_inputs, following_car_index), InputStatus::Confirmed)
     };

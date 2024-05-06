@@ -88,6 +88,10 @@ impl Controls {
         }
     }
 
+    pub fn unknown() -> Controls {
+        Controls::empty(0, 0)
+    }
+
     pub fn from_wasd(
         input: &Input<KeyCode>,
         last_confirmed_hash: u16,
