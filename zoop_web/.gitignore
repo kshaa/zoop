@@ -39,4 +39,5 @@ next-env.d.ts
 public/*.wasm
 /src/services/zoop_engine*
 /public/zoop_engine*
+/public/assets
 !/out/.gitkeep

@@ -68,11 +68,15 @@ Frontend:
 
 ## Development
 
-- Install pre-requisites (a lot of undocumented dependencies) and run `cargo build`
-- Start backend `zoop_server` with `cargo run` in `zoop_server/`
-- Compile the engine for frontend with `./build_wasm.sh` and `./copy_wasm.sh` in `zoop_engine/`
+- Install pre-requisites (various undocumented graphics packages)
+- Install dependencies `cargo install`
+- Start backend server with `cargo run` in `zoop_server/`:
+- Compile the engine for frontend in `zoop_engine/`:
+  - `./build_wasm.sh`
+  - `./copy_wasm.sh` 
+  - `./copy_assets.sh`
 - Install `cargo install tauri-cli`
-- Start frontend `web` with `cargo tauri dev` in `zoop_web`
+- Start frontend server with `cargo tauri dev` in `zoop_web`
 
 ## Notes
 

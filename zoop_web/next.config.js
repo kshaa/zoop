@@ -14,10 +14,28 @@ const nextConfig = {
   },
   async rewrites() {
     return [
+      // Backend server
       {
         source: '/api/:path*',
         destination: 'http://localhost:8080/:path*' // Proxy to Backend
-      }
+      },
+      // Engine assets
+      {
+        source: '/room/assets/tire.png',
+        destination: '/assets/tire.png'
+      },
+      {
+        source: '/room/assets/car.png',
+        destination: '/assets/car.png'
+      },
+      {
+        source: '/room/assets/trace.png',
+        destination: '/assets/trace.png'
+      },
+      {
+        source: '/room/assets/building.glb',
+        destination: '/assets/building.glb'
+      },
     ]
   }
 }
