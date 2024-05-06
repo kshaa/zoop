@@ -66,9 +66,13 @@ Frontend:
 `engine` - `bevy` game app  
 `server` - `actix` server for networking   
 
-## Development
+## Building
 
-- Install pre-requisites (various undocumented graphics packages)
+### Building manually  
+
+- Install pre-requisites
+  - [Bevy dependencies](https://github.com/bevyengine/bevy/blob/main/docs/linux_dependencies.md)  
+  - [Tauri dependencies](https://tauri.app/v1/guides/getting-started/prerequisites/)  
 - Install dependencies `cargo install`
 - Start backend server with `cargo run` in `zoop_server/`:
 - Compile the engine for frontend in `zoop_engine/`:
@@ -78,9 +82,15 @@ Frontend:
 - Install `cargo install tauri-cli`
 - Start frontend server with `cargo tauri dev` in `zoop_web`
 
+### Building with Nix (WIP)
+
+- Install [Nix](https://nixos.org/download/)  
+- Enable [Nix flake support](https://nixos.wiki/wiki/Flakes)    
+- Run `nix build`
+- Backend server, frontend server & CLI is in `result/`
+
 ## Notes
 
-- You need to install various pre-requisites which are not documented as this was a hobby project.
 - The code is somewhat awful as it was written to achieve a result and not to look good.
 - The determinism is somewhat ok, but still breaks down in some cases
 - There are too many footguns when using this combination of libraries together to achieve a production-grade game without being a real-time networking guru :(

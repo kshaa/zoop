@@ -70,7 +70,7 @@ impl Users {
                 username: username.clone(),
             })
         };
-        let registered_user = short_user
+        let registered_user = match (short_user
             .map(|user| {
                 self.user_names.insert(username.clone(), user.id.clone());
                 match self.users.insert(user.id.clone(), user.clone()) {
@@ -79,8 +79,10 @@ impl Users {
                         id: user.id.clone(),
                     }),
                 }
-            })
-            .flatten();
+            })) {
+                Ok(user) => user,
+                Err(e) => Err(e)
+            };
 
         registered_user
     }

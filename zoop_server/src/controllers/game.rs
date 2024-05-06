@@ -134,11 +134,13 @@ pub async fn game_room_connect(
         Err(actix_web::Error::from(AppError::UserTicketWrong()))
     } else {
         let mut lobby = lobby_mutex.lock().unwrap();
-        let room_address = lobby
+        let room_address = match lobby
             .games
             .get_mut(room_id)
-            .map(|m| m.address.get_mut().clone())
-            .flatten();
+            .map(|m| m.address.get_mut().clone()) {
+                Some(address) => address,
+                None => None
+            };
         match room_address {
             Some(address) => {
                 let actor = GamePlayer {

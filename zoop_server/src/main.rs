@@ -1,5 +1,3 @@
-#![feature(result_flattening)]
-
 mod actors;
 mod controllers;
 mod domain;
