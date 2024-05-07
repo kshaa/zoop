@@ -66,28 +66,35 @@ Frontend:
 `engine` - `bevy` game app  
 `server` - `actix` server for networking   
 
-## Building
+## Usage
 
-### Building manually  
+### Pre-requisites (manually)
 
-- Install pre-requisites
-  - [Bevy dependencies](https://github.com/bevyengine/bevy/blob/main/docs/linux_dependencies.md)  
-  - [Tauri dependencies](https://tauri.app/v1/guides/getting-started/prerequisites/)  
-- Install dependencies `cargo install`
-- Start backend server with `cargo run` in `zoop_server/`:
+- Install [Bevy dependencies](https://github.com/bevyengine/bevy/blob/main/docs/linux_dependencies.md)  
+- Install [Tauri dependencies](https://tauri.app/v1/guides/getting-started/prerequisites/)  
+- Install Tauri CLI with `cargo install tauri-cli`
+- Install project dependencies with `cargo install`
+
+### Pre-requisites (with Nix)
+
+- Install [Nix](https://nixos.org/download/)  
+- Enable [Nix flake support](https://nixos.wiki/wiki/Flakes)    
+- Run `nix develop` or `nix develop --ignore-environment` i.e. `nix develop -i`
+- _You now have the build-time dependencies available_
+
+### Development
+
+- Start backend server with `cargo run` in `zoop_server/`
 - Compile the engine for frontend in `zoop_engine/`:
   - `./build_wasm.sh`
   - `./copy_wasm.sh` 
   - `./copy_assets.sh`
-- Install `cargo install tauri-cli`
 - Start frontend server with `cargo tauri dev` in `zoop_web`
 
-### Building with Nix (WIP)
+### Release (with Nix)
 
-- Install [Nix](https://nixos.org/download/)  
-- Enable [Nix flake support](https://nixos.wiki/wiki/Flakes)    
 - Run `nix build`
-- Backend server, frontend server & CLI is in `result/`
+- Release files are in `result/`
 
 ## Notes
 
