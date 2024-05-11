@@ -29,6 +29,7 @@
         # Build parameters
         version = "0.1.0";
         cargoBuildType = "release"; # cargo build --release or --debug
+        conciseBuild = true; # if false, add some extra artifacts for debugging
 
         # System packages
         pkgs = nixpkgs.legacyPackages.${system};
@@ -138,12 +139,13 @@
           buildAndTestSubdir = "zoop_cli";
           extraOutputsToInstall = ["zoop_cli/assets"];
         };
-        cliBuild = pkgs.buildEnv {
+        cliBuild = pkgs.stdenv.mkDerivation {
           name = "cli";
-          extraPrefix = "/cli";
-          paths = [
-            cliBuildUnprefixed
-          ];
+          src = cliBuildUnprefixed;
+          installPhase = ''
+            mkdir -p $out/cli
+            cp -rfL bin/. $out/cli/
+          '';
         };
 
         # Build with engine WASM output
@@ -183,24 +185,37 @@
             cp -rf "${assetBuild}/assets/." "./public/"
             # Build server
             npm run build
+            # Move "dist" to a non-dotfile
+            mv .next next_build
           '';
         };
-        webBuild = pkgs.buildEnv {
-          name = "web";
-          extraPrefix = "/web";
+        webBuildFull = pkgs.buildEnv {
+          name = "web_full";
+          extraPrefix = "/web_full";
           paths = [
             webBuildUnprefixed
           ];
+        };
+        webBuildStandalone = pkgs.stdenv.mkDerivation {
+          name = "web";
+          src = webBuildUnprefixed;
+          installPhase = ''
+            mkdir -p $out/web/.next/static
+            cp -rfL next_build/standalone/. $out/web/
+            cp -rfL next_build/static/. $out/web/.next/static/
+          '';
         };
 
         # Build which contains all individual builds
         allBuilds = pkgs.buildEnv {
           name = "zoop_all";
           paths = [
-            assetBuild
             cliBuild
+            webBuildStandalone
+          ] ++ pkgs.lib.optionals (!conciseBuild) [
+            assetBuild
             engineWasmBuild
-            webBuild
+            webBuildFull
           ];
         };
       in {
@@ -208,7 +223,8 @@
         packages.assets = assetBuild;
         packages.cli = cliBuild;
         packages.engine = engineWasmBuild;
-        packages.web = webBuild;
+        packages.webStandalone = webBuildStandalone;
+        packages.webFull = webBuildStandalone;
         packages.all = allBuilds;
 
         # Dev shell with tools for building manually
