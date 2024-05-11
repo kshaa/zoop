@@ -4,7 +4,6 @@ pub mod car_body;
 pub mod checksum;
 pub mod colors;
 pub mod controls;
-pub mod desync;
 pub mod frames;
 pub mod game_config;
 pub mod game_readiness;

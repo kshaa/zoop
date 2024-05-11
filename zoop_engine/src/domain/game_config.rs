@@ -138,7 +138,7 @@ impl GameConfig {
             query_pipeline_active: false,
             physics_pipeline_active: false,
             force_update_from_transform_changes: true,
-            ..RapierConfiguration::default()
+            ..RapierConfiguration::new(self.pixels_per_meter)
         }
     }
 }

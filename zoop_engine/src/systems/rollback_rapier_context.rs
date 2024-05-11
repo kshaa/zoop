@@ -1,10 +1,11 @@
 use crate::domain::checksum::*;
-use crate::domain::frames::*;
+use crate::domain::frames::RollbackStatus;
 use crate::domain::rapier_rollback_state::RapierRollbackState;
 use bevy::prelude::*;
+use bevy_ggrs::ggrs::Frame;
+use bevy_ggrs::RollbackFrameCount;
 use bevy_rapier2d::plugin::RapierContext;
 use bevy_rapier2d::prelude::*;
-use ggrs::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Resource, Hash, Reflect)]
 #[reflect(Hash)]
@@ -44,7 +45,7 @@ impl EnablePhysicsAfter {
 
 pub fn toggle_physics(
     enable_physics_after: Res<EnablePhysicsAfter>,
-    current_frame: Res<CurrentFrame>,
+    current_frame: Res<RollbackFrameCount>,
     mut physics_enabled: ResMut<PhysicsEnabled>,
     mut config: ResMut<RapierConfiguration>,
 ) {

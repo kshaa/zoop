@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use bevy_sprite3d::{Sprite3d, Sprite3dBundle, Sprite3dParams};
 
-#[derive(Copy, Clone, Debug, Default, Component, Reflect, FromReflect)]
+#[derive(Copy, Clone, Debug, Default, Component, Reflect)]
 #[reflect(Component)]
 pub struct TireMeta {
     pub is_front: bool,
@@ -17,7 +17,7 @@ pub struct TireMeta {
     pub last_trace: Vec3,
 }
 
-#[derive(Copy, Clone, Debug, Default, Component, Reflect, FromReflect)]
+#[derive(Copy, Clone, Debug, Default, Component, Reflect)]
 #[reflect(Component)]
 pub struct TirePhysics {
     pub angle: f32,
@@ -108,7 +108,7 @@ impl Tire {
                 image: spritesheets.tire.clone(),
                 pixels_per_metre: 500.0 / pixels_per_meter,
                 // custom_size: Some(half_size * 2.0),
-                partial_alpha: true,
+                // partial_alpha: true,
                 unlit: true,
                 transform: physics.entity_physics.transform,
                 ..default()

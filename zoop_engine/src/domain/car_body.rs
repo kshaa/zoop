@@ -77,7 +77,7 @@ impl CarBody {
             sprite3d: Sprite3d {
                 image: spritesheets.car.clone(),
                 pixels_per_metre: 250.0 / pixels_per_meter,
-                partial_alpha: true,
+                // partial_alpha: true,
                 unlit: true,
                 transform: physics
                     .transform

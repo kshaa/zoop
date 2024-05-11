@@ -1,6 +1,5 @@
 use crate::domain::car_body::CarMeta;
 
-use crate::domain::desync::*;
 use crate::domain::game_config::GameConfig;
 use crate::domain::ggrs_config::GGRSConfig;
 use crate::domain::player::Player;
@@ -73,8 +72,7 @@ pub fn draw_drift_marks(
 pub fn drive_car(
     config: Res<GameConfig>,
     inputs: Option<Res<PlayerInputs<GGRSConfig>>>,
-    fallback_inputs: Res<Input<KeyCode>>,
-    mut hashes: ResMut<RxFrameHashes>,
+    fallback_inputs: Res<ButtonInput<KeyCode>>,
     mut source_car_query: Query<(&Transform, &Player), Without<TireMeta>>,
     mut source_tire_query: Query<
         (
@@ -121,37 +119,6 @@ pub fn drive_car(
             )
         };
 
-        if tire_meta.is_front && tire_meta.is_right {
-            // Check the desync for this player if they're not a local handle
-            // Did they send us some goodies?
-            let is_local = config
-                .players
-                .iter()
-                .enumerate()
-                .find(|(handle, p)| handle.clone() == tire_player.handle && p.is_local)
-                .is_some();
-            if !is_local && game_input.last_confirmed_frame > 0 {
-                if let Some(frame_hash) = hashes.0.get_mut(
-                    (game_input.last_confirmed_frame as usize) % config.desync_max_frames as usize,
-                ) {
-                    assert!(
-                        frame_hash.frame != game_input.last_confirmed_frame
-                            || frame_hash.rapier_checksum == game_input.last_confirmed_hash,
-                        "Got new data for existing frame data {}",
-                        frame_hash.frame
-                    );
-
-                    // Only update this local data if the frame is new-to-us.
-                    // We don't want to overwrite any existing validated status
-                    // unless the frame is replacing what is already in the buffer.
-                    if frame_hash.frame != game_input.last_confirmed_frame {
-                        frame_hash.frame = game_input.last_confirmed_frame;
-                        frame_hash.rapier_checksum = game_input.last_confirmed_hash;
-                        frame_hash.validated = false;
-                    }
-                }
-            }
-        }
         let controls = game_input;
         let original_tire_angle = tire_physics.angle;
 

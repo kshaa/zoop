@@ -1,5 +1,5 @@
 use crate::domain::controls::Controls;
-use ggrs::Config;
+use bevy_ggrs::ggrs::Config;
 use zoop_shared::player_id::PlayerId;
 
 #[derive(Debug)]

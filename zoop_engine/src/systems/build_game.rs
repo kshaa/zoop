@@ -1,8 +1,8 @@
 use crate::domain::car_body::CarMeta;
+use crate::domain::frames::{log_confirmed_frame, log_start_frame, update_current_session_frame, update_rollback_status, CurrentSessionFrame, RollbackStatus};
 
 use bevy::ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bevy::gltf::Gltf;
-use bevy::prelude::CoreSet::*;
 use bevy::prelude::*;
 use bevy_ggrs::*;
 #[cfg(feature = "world_debug")]
@@ -16,11 +16,9 @@ use smooth_bevy_cameras::{LookTransform, LookTransformBundle, LookTransformPlugi
 
 use crate::domain::colors::*;
 use crate::domain::controls::*;
-use crate::domain::desync::*;
-use crate::domain::frames::*;
 use crate::domain::game_config::GameConfig;
 use crate::domain::game_readiness::GameReadiness;
-use crate::domain::game_set::GameSet;
+use crate::domain::game_set::*;
 use crate::domain::ggrs_config::GGRSConfig;
 use crate::domain::player::Player;
 use crate::domain::spawn::*;
@@ -64,44 +62,35 @@ pub fn build_game(game: &mut App, config: GameConfig) {
     }));
 
     // For following camera
-    game.add_plugin(LookTransformPlugin);
-    game.add_system(move_camera_system);
+    game.add_plugins(LookTransformPlugin);
+    game.add_systems(Update, move_camera_system);
 
     // Physics plugin
     game.insert_resource(config.rapier_config());
-    game.add_plugin(
+    game.add_plugins(
         RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(config.pixels_per_meter)
             .with_default_system_setup(false),
     );
 
     // Debug line renderer
     #[cfg(feature = "debug_lines")]
-    game.add_plugin(DebugLinesPlugin::default());
+    game.add_plugins(DebugLinesPlugin::default());
 
     // Debug physics renderer
     #[cfg(feature = "rapier_debug_physics")]
-    game.add_plugin(RapierDebugRenderPlugin::default());
+    game.add_plugins(RapierDebugRenderPlugin::default());
 
     // Debug world inspector
     #[cfg(feature = "world_debug")]
-    game.add_plugin(WorldInspectorPlugin::new());
+    game.add_plugins(WorldInspectorPlugin::new());
 
     // Add 3d sprites
-    game.add_plugin(Sprite3dPlugin);
+    game.add_plugins(Sprite3dPlugin);
 
-    // Init rollback & desync resources
-    // frame updating
-    game.insert_resource(LastFrame::default());
-    game.insert_resource(CurrentFrame::default());
+    // Game readiness
     game.insert_resource(CurrentSessionFrame::default());
-    game.insert_resource(ConfirmedFrame::default());
     game.insert_resource(RollbackStatus::default());
-    game.insert_resource(ValidatableFrame::default());
-    game.add_state::<GameReadiness>();
-
-    // desync detection
-    game.insert_resource(FrameHashes::default());
-    game.insert_resource(RxFrameHashes::default());
+    game.init_state::<GameReadiness>();
 
     // physics toggling
     game.insert_resource(EnablePhysicsAfter::with_default_offset(
@@ -112,18 +101,18 @@ pub fn build_game(game: &mut App, config: GameConfig) {
     game.insert_resource(PhysicsEnabled::default());
 
     // Reset rapier
-    game.add_startup_system(reset_rapier);
+    game.add_systems(Startup, reset_rapier);
 
     // Init game state
     let state = init_scene(&config);
     game.insert_resource(state);
-    game.add_startup_system(init_materials);
-    game.add_system(await_assets.run_if(in_state(GameReadiness::LoadingAssets)));
-    game.add_system(setup_scene.run_if(in_state(GameReadiness::LoadingScene)));
+    game.add_systems(Startup, init_materials);
+    game.add_systems(Update, await_assets.run_if(in_state(GameReadiness::LoadingAssets)));
+    game.add_systems(Update, setup_scene.run_if(in_state(GameReadiness::LoadingScene)));
 
     // Define loading logic
     game.insert_resource(SpriteSheets::default());
-    game.add_startup_system(
+    game.add_systems(Startup,
         |asset_server: Res<AssetServer>, mut spritesheets: ResMut<SpriteSheets>| {
             let car: Handle<Image> = asset_server.load("car.png");
             let tire: Handle<Image> = asset_server.load("tire.png");
@@ -137,7 +126,7 @@ pub fn build_game(game: &mut App, config: GameConfig) {
     );
 
     // Define game logic schedule
-    let game_schedule_label = GGRSSchedule;
+    let game_schedule_label = GgrsSchedule;
 
     // Configure networking
     info!("Building game loop");
@@ -151,13 +140,10 @@ pub fn build_game(game: &mut App, config: GameConfig) {
             ambiguity_detection: LogLevel::Error,
             ..default()
         });
-        game.add_schedule(GGRSSchedule, schedule);
+        game.add_schedule(schedule);
         // Add fixed schedule runner
-        game.add_systems((manual_frame_advance,).in_base_set(FixedUpdate));
-        game.insert_resource(FixedTime::new_from_secs(1.0 / (config.fps as f32)));
-        // Add fallback for rollback id provider
-        let rollback_provider = RollbackIdProvider::default();
-        game.insert_resource(rollback_provider);
+        game.add_systems(FixedUpdate, (manual_frame_advance,));
+        game.insert_resource(Time::<Fixed>::from_seconds(1.0 / (config.fps as f64)));
     }
 
     // Construct game logic schedule
@@ -165,34 +151,27 @@ pub fn build_game(game: &mut App, config: GameConfig) {
     game_schedule
         .configure_sets(
             (
-                GameSet::Rollback,
-                GameSet::Game,
+                Rollback,
+                Game,
                 PhysicsSet::SyncBackend,
-                PhysicsSet::SyncBackendFlush,
                 PhysicsSet::StepSimulation,
                 PhysicsSet::Writeback,
-                GameSet::SaveAndChecksum,
-            )
-                .chain()
-                .after(CoreSet::UpdateFlush)
-                .before(CoreSet::PostUpdate),
+                SaveAndChecksum,
+            ).chain()
         )
         .add_systems(
             (
-                update_current_frame,
+                log_start_frame,
                 update_current_session_frame,
-                update_confirmed_frame,
-                // the three above must actually come before we update rollback status
+                log_confirmed_frame,
                 update_rollback_status,
-                // these three must actually come after we update rollback status
-                update_validatable_frame,
                 toggle_physics.run_if(in_state(GameReadiness::Ready)),
                 rollback_rapier_context,
                 // Make sure to flush everything before we apply our game logic.
-                apply_system_buffers,
+                apply_deferred,
             )
                 .chain()
-                .in_base_set(GameSet::Rollback),
+                .in_set(Rollback),
         );
 
     if config.network.is_some() {
@@ -206,13 +185,11 @@ pub fn build_game(game: &mut App, config: GameConfig) {
                 // The `frame_validator` relies on the execution of `apply_inputs` and must come after.
                 // It could happen anywhere else, I just stuck it here to be clear.
                 // If this is causing your game to quit, you have a bug!
-                frame_validator,
-                force_update_rollbackables,
                 // Make sure to flush everything before Rapier syncs
-                apply_system_buffers,
+                apply_deferred,
             )
                 .chain()
-                .in_base_set(GameSet::Game),
+                .in_set(Game),
         );
     } else {
         game_schedule.add_systems(
@@ -222,49 +199,34 @@ pub fn build_game(game: &mut App, config: GameConfig) {
                 drive_car
             )
                 .chain()
-                .in_base_set(GameSet::Game),
+                .in_set(Game),
         );
     }
 
     game_schedule
         .add_systems(
             RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::SyncBackend)
-                .in_base_set(PhysicsSet::SyncBackend),
-        )
-        .add_systems(
-            (
-                rapier_stub
-                    .after(bevy::transform::systems::sync_simple_transforms)
-                    .before(bevy::transform::systems::propagate_transforms),
-                rapier_stub2
-                    .after(systems::init_joints)
-                    .before(systems::apply_initial_rigid_body_impulses),
-            )
-                .in_base_set(PhysicsSet::SyncBackend),
-        )
-        .add_systems(
-            RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::SyncBackendFlush)
-                .in_base_set(PhysicsSet::SyncBackendFlush),
+                .in_set(PhysicsSet::SyncBackend),
         )
         .add_systems(
             RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::StepSimulation)
-                .in_base_set(PhysicsSet::StepSimulation),
+                .in_set(PhysicsSet::StepSimulation),
         )
         .add_systems(
             RapierPhysicsPlugin::<NoUserData>::get_systems(PhysicsSet::Writeback)
-                .in_base_set(PhysicsSet::Writeback),
+                .in_set(PhysicsSet::Writeback),
         )
         .add_systems(
             (
                 save_rapier_context, // This must execute after writeback to store the RapierContext
-                apply_system_buffers, // Flushing again
+                apply_deferred, // Flushing again
             )
                 .chain()
-                .in_base_set(GameSet::SaveAndChecksum),
+                .in_set(SaveAndChecksum),
         );
 
     // Scene setup
-    game.add_startup_system(setup_graphics);
+    game.add_systems(Startup, setup_graphics);
 }
 
 fn setup_graphics(config: Res<GameConfig>, mut commands: Commands) {
@@ -293,7 +255,7 @@ fn move_camera_system(
     mut cameras: Query<&mut LookTransform>,
     source_car_query: Query<(&CarMeta, &Transform, &Player), Without<TireMeta>>,
     inputs: Option<Res<PlayerInputs<GGRSConfig>>>,
-    fallback_inputs: Res<Input<KeyCode>>,
+    fallback_inputs: Res<ButtonInput<KeyCode>>,
 ) {
     let following_car_index = 0;
 
@@ -301,7 +263,7 @@ fn move_camera_system(
         let network_inputs = inputs.as_ref();
         match network_inputs {
             Some(inputs) => inputs[following_car_index],
-            None => (Controls::unknown(), InputStatus::Predicted)
+            None => (Controls::empty(), InputStatus::Predicted)
         }
     } else {
         (Controls::for_nth_player(&fallback_inputs, following_car_index), InputStatus::Confirmed)
@@ -331,5 +293,5 @@ fn rapier_stub() {}
 fn rapier_stub2() {}
 
 fn manual_frame_advance(world: &mut World) {
-    world.run_schedule(GGRSSchedule);
+    world.run_schedule(GgrsSchedule);
 }

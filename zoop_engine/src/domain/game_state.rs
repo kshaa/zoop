@@ -4,7 +4,7 @@ use crate::domain::tire::TirePhysics;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-#[derive(Clone, Debug, Default, Resource, Reflect, FromReflect)]
+#[derive(Clone, Debug, Default, Resource, Reflect)]
 #[reflect(Resource)]
 pub struct EntityPhysics {
     pub transform: Transform,
@@ -40,7 +40,7 @@ impl EntityPhysics {
     }
 }
 
-#[derive(Clone, Debug, Default, Resource, Reflect, FromReflect)]
+#[derive(Clone, Debug, Default, Resource, Reflect)]
 #[reflect(Resource)]
 pub struct GameTire {
     pub tire_physics: TirePhysics,
@@ -72,7 +72,7 @@ impl GameTire {
     }
 }
 
-#[derive(Clone, Debug, Default, Resource, Reflect, FromReflect)]
+#[derive(Clone, Debug, Default, Resource, Reflect)]
 #[reflect(Resource)]
 pub struct GameBuilding {
     pub position: Vec3,
@@ -96,7 +96,7 @@ impl GameBuilding {
     }
 }
 
-#[derive(Clone, Debug, Default, Resource, Reflect, FromReflect)]
+#[derive(Clone, Debug, Default, Resource, Reflect)]
 #[reflect(Resource)]
 pub struct GameCar {
     pub tire_top_left: GameTire,
@@ -148,7 +148,7 @@ impl GameCar {
     }
 }
 
-#[derive(Clone, Debug, Resource, Reflect, FromReflect)]
+#[derive(Clone, Debug, Resource, Reflect)]
 #[reflect(Resource)]
 pub enum GameEntity {
     Stub(),
@@ -161,7 +161,7 @@ impl Default for GameEntity {
     }
 }
 
-#[derive(Clone, Debug, Default, Resource, Reflect, FromReflect)]
+#[derive(Clone, Debug, Default, Resource, Reflect)]
 #[reflect(Resource)]
 pub struct GameState {
     pub entities: Vec<GameEntity>,

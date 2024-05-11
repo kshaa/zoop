@@ -1,6 +1,7 @@
 use crate::domain::car::spawn_car;
 use bevy::asset::LoadState;
 use bevy::gltf::{Gltf, GltfMesh};
+use bevy::render::render_asset::RenderAssetUsages;
 
 
 use crate::domain::colors::{ZOOP_BLACK, ZOOP_RED, ZOOP_YELLOW};
@@ -14,7 +15,7 @@ use crate::domain::game_readiness::GameReadiness;
 use crate::domain::spritesheets::SpriteSheets;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-use bevy_ggrs::{Rollback, RollbackIdProvider};
+use bevy_ggrs::AddRollbackCommandExtension;
 use bevy_rapier2d::prelude::*;
 use bevy_sprite3d::Sprite3dParams;
 
@@ -94,7 +95,7 @@ pub fn init_scene(config: &GameConfig) -> GameState {
 #[allow(dead_code)]
 pub fn destroy_scene(
     config: Res<GameConfig>,
-    player_entities: Query<(Entity, With<Player>)>,
+    player_entities: Query<(Entity, Has<Player>)>,
     mut rapier_config: ResMut<RapierConfiguration>,
     mut rapier_render_time: ResMut<SimulationToRenderTime>,
     mut rapier_context: ResMut<RapierContext>,
@@ -123,7 +124,7 @@ pub fn init_materials(
         base_color_texture: Some(images.add(uv_debug_texture())),
         ..default()
     });
-    let cube = meshes.add(shape::Cube::default().into());
+    let cube = meshes.add(Cuboid::default());
     spritesheets.debug_material = debug_material;
     spritesheets.cube = cube;
 }
@@ -153,6 +154,7 @@ fn uv_debug_texture() -> Image {
         TextureDimension::D2,
         &texture_data,
         TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::RENDER_WORLD
     )
 }
 
@@ -163,16 +165,16 @@ pub fn await_assets(
     spritesheets: Res<SpriteSheets>,
 ) {
     // Check assets loaded
-    if asset_server.get_load_state(&spritesheets.car) != LoadState::Loaded {
+    if asset_server.get_load_state(&spritesheets.car) != Some(LoadState::Loaded) {
         return;
     }
-    if asset_server.get_load_state(&spritesheets.tire) != LoadState::Loaded {
+    if asset_server.get_load_state(&spritesheets.tire) != Some(LoadState::Loaded) {
         return;
     }
-    if asset_server.get_load_state(&spritesheets.trace) != LoadState::Loaded {
+    if asset_server.get_load_state(&spritesheets.trace) != Some(LoadState::Loaded) {
         return;
     }
-    if asset_server.get_load_state(&spritesheets.building) != LoadState::Loaded {
+    if asset_server.get_load_state(&spritesheets.building) != Some(LoadState::Loaded) {
         return;
     }
 
@@ -188,7 +190,6 @@ pub fn setup_scene(
     mut sprite_params: Sprite3dParams,
     config: Res<GameConfig>,
     state: Res<GameState>,
-    mut rip: ResMut<RollbackIdProvider>,
     spawn_pool: Query<(Entity, &DeterministicSpawn)>,
     mut commands: Commands,
 ) {
@@ -210,8 +211,7 @@ pub fn setup_scene(
         config.as_ref(),
         &state,
         &mut commands,
-        &mut sorted_entity_pool,
-        &mut rip,
+        &mut sorted_entity_pool
     );
 }
 
@@ -223,8 +223,7 @@ pub fn spawn_scene(
     config: &GameConfig,
     state: &GameState,
     commands: &mut Commands,
-    spawn_pool: &mut Vec<Entity>,
-    rip: &mut RollbackIdProvider,
+    spawn_pool: &mut Vec<Entity>
 ) {
     info!("Spawning scene from state");
     commands.insert_resource(AmbientLight {
@@ -243,8 +242,7 @@ pub fn spawn_scene(
                     config,
                     car.clone(),
                     commands,
-                    spawn_pool,
-                    rip,
+                    spawn_pool
                 )
             }
             GameEntity::Building(building) => setup_building(
@@ -254,8 +252,7 @@ pub fn spawn_scene(
                 config,
                 building.clone(),
                 commands,
-                spawn_pool,
-                rip,
+                spawn_pool
             ),
         }
     }
@@ -273,12 +270,11 @@ pub fn setup_building(
     _config: &GameConfig,
     building: GameBuilding,
     commands: &mut Commands,
-    spawn_pool: &mut Vec<Entity>,
-    rip: &mut RollbackIdProvider,
+    spawn_pool: &mut Vec<Entity>
 ) {
     if !building.is_tunnel {
         let mut physics_entity = commands.entity(spawn_pool.pop().unwrap());
-        physics_entity.insert(Rollback::new(rip.next_id()));
+        physics_entity.add_rollback();
         physics_entity.insert(Building::build(&building));
     }
 
@@ -296,8 +292,7 @@ pub fn setup_car(
     config: &GameConfig,
     car: GameCar,
     commands: &mut Commands,
-    spawn_pool: &mut Vec<Entity>,
-    rip: &mut RollbackIdProvider,
+    spawn_pool: &mut Vec<Entity>
 ) {
     spawn_car(
         spritesheets,
@@ -305,7 +300,6 @@ pub fn setup_car(
         config.pixels_per_meter,
         commands,
         spawn_pool,
-        rip,
         car.player.clone(),
         String::from(format!("Car #{}", car.player.handle)),
         config.car_half_size(),

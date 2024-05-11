@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bytemuck::{Pod, Zeroable};
-use ggrs::*;
 
 const INPUT_ACCELERATE: u16 = 1 << 0;
 const INPUT_REVERSE: u16 = 1 << 1;
@@ -13,9 +12,6 @@ const INPUT_PARK: u16 = 1 << 5;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Pod, Zeroable)]
 pub struct Controls {
     pub input: u16,
-
-    pub last_confirmed_hash: u16,
-    pub last_confirmed_frame: Frame,
 }
 impl Controls {
     pub fn accelerating(&self) -> bool {
@@ -42,15 +38,13 @@ impl Controls {
     }
 
     pub fn from_keys(
-        input: &Input<KeyCode>,
+        input: &ButtonInput<KeyCode>,
         accelerator: KeyCode,
         reverser: KeyCode,
         breaker: KeyCode,
         steer_right: KeyCode,
         steer_left: KeyCode,
-        park: KeyCode,
-        last_confirmed_hash: u16,
-        last_confirmed_frame: Frame,
+        park: KeyCode
     ) -> Controls {
         let mut serialized: u16 = 0;
 
@@ -75,66 +69,48 @@ impl Controls {
 
         Controls {
             input: serialized,
-            last_confirmed_hash,
-            last_confirmed_frame,
         }
     }
 
-    pub fn empty(last_confirmed_hash: u16, last_confirmed_frame: Frame) -> Controls {
+    pub fn empty() -> Controls {
         Controls {
             input: 0,
-            last_confirmed_hash,
-            last_confirmed_frame,
         }
-    }
-
-    pub fn unknown() -> Controls {
-        Controls::empty(0, 0)
     }
 
     pub fn from_wasd(
-        input: &Input<KeyCode>,
-        last_confirmed_hash: u16,
-        last_confirmed_frame: Frame,
+        input: &ButtonInput<KeyCode>,
     ) -> Controls {
         Controls::from_keys(
             input,
-            KeyCode::W,
-            KeyCode::S,
-            KeyCode::C,
-            KeyCode::D,
-            KeyCode::A,
-            KeyCode::V,
-            last_confirmed_hash,
-            last_confirmed_frame,
+            KeyCode::KeyW,
+            KeyCode::KeyS,
+            KeyCode::KeyC,
+            KeyCode::KeyD,
+            KeyCode::KeyA,
+            KeyCode::KeyV,
         )
     }
 
     pub fn from_ijkl(
-        input: &Input<KeyCode>,
-        last_confirmed_hash: u16,
-        last_confirmed_frame: Frame,
+        input: &ButtonInput<KeyCode>,
     ) -> Controls {
         Controls::from_keys(
             input,
-            KeyCode::I,
-            KeyCode::K,
-            KeyCode::N,
-            KeyCode::L,
-            KeyCode::J,
-            KeyCode::B,
-            last_confirmed_hash,
-            last_confirmed_frame,
+            KeyCode::KeyI,
+            KeyCode::KeyK,
+            KeyCode::KeyN,
+            KeyCode::KeyL,
+            KeyCode::KeyJ,
+            KeyCode::KeyB
         )
     }
 
-    pub fn for_nth_player(input: &Input<KeyCode>, n: usize) -> Controls {
-        let hash: u16 = 0;
-        let frame: Frame = 0;
+    pub fn for_nth_player(input: &ButtonInput<KeyCode>, n: usize) -> Controls {
         if n == 0 {
-            Controls::from_wasd(input, hash, frame)
+            Controls::from_wasd(input)
         } else {
-            Controls::from_ijkl(input, hash, frame)
+            Controls::from_ijkl(input)
         }
     }
 }

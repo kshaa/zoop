@@ -1,9 +1,11 @@
-use bevy::prelude::*;
+use bevy::ecs::schedule::{ScheduleLabel, SystemSet};
+use std::{fmt::Debug, hash::Hash};
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
-#[system_set(base)]
-pub enum GameSet {
-    Rollback,
-    Game,
-    SaveAndChecksum,
-}
+#[derive(ScheduleLabel, SystemSet, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Rollback;
+
+#[derive(ScheduleLabel, SystemSet, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Game;
+
+#[derive(ScheduleLabel, SystemSet, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SaveAndChecksum;

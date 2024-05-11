@@ -125,13 +125,13 @@
           extraPrefix = "/engine";
           buildType = cargoBuildType;
           version = version;
-          cargoSha256 = "sha256-QLUJGOkwmdVkVaumr+ZQsmrrvN/kAhr82F37wSHdIVo=";
+          cargoSha256 = "sha256-HMxtqjLuro6Z96IOJLwqcNBVNPRerRYbWmPinef6mAU=";
           nativeBuildInputs = engineBuildDependencies;
           buildInputs = engineLinkedDependencies;
           buildAndTestSubdir = "zoop_engine";
-          # Compile the wasm by running wasm-pack
           WASM_PACK_CACHE = ".wasm-pack-cache";
           RUST_LOG = "debug";
+          RUSTFLAGS = "--cfg=web_sys_unstable_apis";
           dontCargoBuild = true;
           buildPhase = ''
             runHook preBuild

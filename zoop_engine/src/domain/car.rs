@@ -5,7 +5,7 @@ use crate::domain::spritesheets::SpriteSheets;
 use crate::domain::tire::Tire;
 use crate::logic::math::*;
 use bevy::prelude::*;
-use bevy_ggrs::{Rollback, RollbackIdProvider};
+use bevy_ggrs::AddRollbackCommandExtension;
 use bevy_rapier2d::prelude::*;
 use bevy_sprite3d::Sprite3dParams;
 
@@ -15,7 +15,6 @@ pub fn spawn_car(
     pixels_per_meter: f32,
     commands: &mut Commands,
     spawn_pool: &mut Vec<Entity>,
-    rip: &mut RollbackIdProvider,
     player: Player,
     car_title: String,
     car_half_size: Vec2,
@@ -38,7 +37,7 @@ pub fn spawn_car(
         car_color,
         car_physics.physics.clone(),
     ));
-    car.insert(Rollback::new(rip.next_id()));
+    car.add_rollback();
 
     let car_id = car.id();
     spawn_tires(
@@ -47,7 +46,6 @@ pub fn spawn_car(
         pixels_per_meter,
         commands,
         spawn_pool,
-        rip,
         player.clone(),
         car_id.clone(),
         car_half_size,
@@ -65,7 +63,6 @@ fn spawn_tire(
     pixels_per_meter: f32,
     commands: &mut Commands,
     spawn_pool: &mut Vec<Entity>,
-    rip: &mut RollbackIdProvider,
     player: Player,
     car: Entity,
     car_anchor: impl Into<GenericJoint>,
@@ -91,7 +88,7 @@ fn spawn_tire(
         damping,
         physics,
     ));
-    tire.insert(Rollback::new(rip.next_id()));
+    tire.add_rollback();
     tire.insert(ImpulseJoint::new(car, car_anchor));
 }
 
@@ -101,7 +98,6 @@ pub fn spawn_tires(
     pixels_per_meter: f32,
     commands: &mut Commands,
     spawn_pool: &mut Vec<Entity>,
-    rip: &mut RollbackIdProvider,
     player: Player,
     car: Entity,
     car_half_size: Vec2,
@@ -117,7 +113,6 @@ pub fn spawn_tires(
         pixels_per_meter,
         commands,
         spawn_pool,
-        rip,
         player.clone(),
         car,
         tire_anchor(car_half_size, tire_half_size, true, true),
@@ -135,7 +130,6 @@ pub fn spawn_tires(
         pixels_per_meter,
         commands,
         spawn_pool,
-        rip,
         player.clone(),
         car,
         tire_anchor(car_half_size, tire_half_size, true, false),
@@ -153,7 +147,6 @@ pub fn spawn_tires(
         pixels_per_meter,
         commands,
         spawn_pool,
-        rip,
         player.clone(),
         car,
         tire_anchor(car_half_size, tire_half_size, false, true),
@@ -171,7 +164,6 @@ pub fn spawn_tires(
         pixels_per_meter,
         commands,
         spawn_pool,
-        rip,
         player.clone(),
         car,
         tire_anchor(car_half_size, tire_half_size, false, false),

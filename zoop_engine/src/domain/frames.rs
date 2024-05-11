@@ -1,7 +1,7 @@
-use crate::domain::game_config::GameConfig;
 use crate::domain::ggrs_config::GGRSConfig;
 use bevy::prelude::*;
 use bevy_ggrs::Session;
+use bevy_ggrs::{ConfirmedFrameCount, RollbackFrameCount};
 use ggrs::*;
 
 /// Left outside of the rollback system to detect rollbacks
@@ -47,37 +47,30 @@ pub struct RollbackStatus {
     pub last_frame: Frame,
 }
 
-pub fn update_confirmed_frame(
-    mut confirmed_frame: ResMut<ConfirmedFrame>,
-    current_frame: Res<CurrentFrame>,
-    session: Option<Res<Session<GGRSConfig>>>,
+pub fn log_confirmed_frame(
+    mut confirmed_frame: Res<ConfirmedFrameCount>
 ) {
-    if let Some(session) = session {
-        match &*session {
-            Session::SyncTestSession(_) => confirmed_frame.0 = current_frame.0,
-            Session::P2PSession(s) => confirmed_frame.0 = s.confirmed_frame(),
-            Session::SpectatorSession(_) => confirmed_frame.0 = current_frame.0,
-        }
-    }
-
-    debug!("confirmed frame: {}", confirmed_frame.0);
+    let confirmed_frame: i32 = (*confirmed_frame).into();
+    debug!("confirmed frame: {}", confirmed_frame);
 }
 
-pub fn update_current_frame(mut current_frame: ResMut<CurrentFrame>) {
-    current_frame.0 += 1;
-    debug!("---- start frame {} ----", current_frame.0);
+pub fn log_start_frame(mut current_frame: Res<ConfirmedFrameCount>) {
+    let current_frame: i32 = (*current_frame).into();
+    debug!("---- start frame {} ----", current_frame);
 }
 
 pub fn update_current_session_frame(
     mut current_session_frame: ResMut<CurrentSessionFrame>,
-    current_frame: Res<CurrentFrame>,
+    current_frame: Res<RollbackFrameCount>,
     session: Option<Res<Session<GGRSConfig>>>,
 ) {
+    let current_frame: i32 = (*current_frame).into();
+
     if let Some(session) = session {
         match &*session {
-            Session::SyncTestSession(_) => current_session_frame.0 = current_frame.0,
-            Session::P2PSession(s) => current_session_frame.0 = s.current_frame(),
-            Session::SpectatorSession(_) => current_session_frame.0 = current_frame.0,
+            Session::SyncTest(_) => current_session_frame.0 = current_frame,
+            Session::P2P(s) => current_session_frame.0 = s.current_frame(),
+            Session::Spectator(_) => current_session_frame.0 = current_frame,
         }
     }
 
@@ -85,18 +78,20 @@ pub fn update_current_session_frame(
 }
 
 pub fn update_rollback_status(
-    current_frame: Res<CurrentFrame>,
+    current_frame: Res<RollbackFrameCount>,
     current_session_frame: Res<CurrentSessionFrame>,
     mut rollback_status: ResMut<RollbackStatus>,
 ) {
+    let current_frame: i32 = (*current_frame).into();
+
     // If the last frame is greater than the current frame, we have rolled back.
     // Same for equals, because it means our frame did not update!
-    rollback_status.is_rollback = rollback_status.last_frame >= current_frame.0;
+    rollback_status.is_rollback = rollback_status.last_frame >= current_frame;
     rollback_status.is_replay =
-        rollback_status.is_rollback || current_session_frame.0 > current_frame.0;
+        rollback_status.is_rollback || current_session_frame.0 > current_frame;
 
     if rollback_status.is_rollback {
-        rollback_status.rollback_frame = current_frame.0;
+        rollback_status.rollback_frame = current_frame;
         info!(
             "rollback on {} to {}",
             rollback_status.last_frame, rollback_status.rollback_frame,
@@ -106,27 +101,12 @@ pub fn update_rollback_status(
     if rollback_status.is_replay {
         info!(
             "replay on {} of {}",
-            current_session_frame.0, current_frame.0
+            current_session_frame.0, current_frame
         );
     }
 
     // I know this seems silly at first glance, but after we know we've entered
     // a rollback once, we have to resimulate all frames back to where we left
     // off... and there may be additional rollbacks that happen during that!
-    rollback_status.last_frame = current_frame.0;
-}
-
-pub fn update_validatable_frame(
-    config: Res<GameConfig>,
-    current_frame: Res<CurrentFrame>,
-    current_session_frame: Res<CurrentSessionFrame>,
-    confirmed_frame: Res<ConfirmedFrame>,
-    mut validatable_frame: ResMut<ValidatableFrame>,
-) {
-    validatable_frame.0 = std::cmp::min(
-        current_frame.0,
-        std::cmp::min(current_session_frame.0, confirmed_frame.0),
-    ) - (config.desync_max_frames as i32);
-
-    debug!("validatable frame: {}", validatable_frame.0);
+    rollback_status.last_frame = current_frame;
 }

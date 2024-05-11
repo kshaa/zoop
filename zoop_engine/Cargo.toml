@@ -4,26 +4,29 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy = { version = "0.10.1", features = [] }
-bevy-inspector-egui = "0.18.3"
-bevy_rapier2d = { version = "0.21.0", features = [ "wasm-bindgen", "serde-serialize", "enhanced-determinism" ] }
-console_error_panic_hook = { version = "0.1", optional = true }
-nalgebra = "0.32.2"
-bevy_prototype_debug_lines = { version = "0.10.1", optional = true }
-bevy_ggrs = "0.12.0"
-bevy_sprite3d = "~2.4"
-bytemuck = "1.13.1"
+bevy = { version = "0.13", features = [] }
+bevy-inspector-egui = "0.24"
+bevy_rapier2d = { version = "0.26", features = [ "wasm-bindgen", "serde-serialize", "enhanced-determinism" ] }
+ggrs = "0.10.2"
+console_error_panic_hook = { version = "~0.1", optional = true }
+nalgebra = "0.32"
+bevy_prototype_debug_lines = { version = "0.11", optional = true }
+bevy_ggrs = "0.15"
+bevy_sprite3d = "2.8"
+bytemuck = "1.13"
 zoop_shared = { path = "../zoop_shared" }
 uuid = { version = "1.8.0", features = ["v4", "serde"] }
-serde = { version = "1.0.198", features = ["serde_derive"] }
+serde = { version = "=1.0.198", features = ["serde_derive"] }
 serde_json = "1.0.116"
 ewebsock = "0.5.0"
 url = "2.5.0"
-bincode = "1.3.3"
-wasm-bindgen = "=0.2.91"
+bincode = "1.3"
+wasm-bindgen = "=0.2.91" # Version available in `flake.nix`
 reqwest-wasm = { version = "0.11.16", features = ["blocking"] }
+smooth-bevy-cameras = "0.11"
+
+[dev-dependencies]
 assert_float_eq = "1.1.3"
-smooth-bevy-cameras = "0.8.0"
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
