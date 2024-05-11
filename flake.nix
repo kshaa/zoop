@@ -73,6 +73,13 @@
         bp = pkgs.callPackage nixNpmBuildPackage {};
         buildNpmPackage = bp.buildNpmPackage;
 
+        # Helper runner script
+        runnerScript = exec: pkgs.writeShellScript "runner.sh" ''
+          SCRIPT_DIR=''$( cd -- "''$( dirname -- "''${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+          cd ''${SCRIPT_DIR}
+          ${exec}
+        '';
+
         # Engine compile-time dependencies
         engineBuildDependencies = [
           # needed by many crates
@@ -148,6 +155,30 @@
           '';
         };
 
+        # Build with backend server
+        serverBuildUnprefixed = buildRustPackage {
+          pname = "zoop_server";
+          src = gitignoreSource' ./.;
+          extraPrefix = "/server";
+          buildType = cargoBuildType;
+          version = version;
+          cargoSha256 = "sha256-CpjWFFHJljj8MnmQQBFsFQgOfp7CTDxkBY2VC3U+kq4=";
+          nativeBuildInputs = engineBuildDependencies;
+          buildInputs = engineLinkedDependencies;
+          buildAndTestSubdir = "zoop_server";
+        };
+        serverBuild = pkgs.stdenv.mkDerivation {
+          name = "server";
+          src = serverBuildUnprefixed;
+          runnerScript = runnerScript "./zoop_server";
+          installPhase = ''
+            mkdir -p $out/server
+            cp -rfL bin/. $out/server/
+            cp -rfL $runnerScript $out/server/run.sh
+            chmod +x $out/server/run.sh
+          '';
+        };
+
         # Build with engine WASM output
         engineWasmBuild = buildRustPackage {
           pname = "zoop_engine";
@@ -199,24 +230,68 @@
         webBuildStandalone = pkgs.stdenv.mkDerivation {
           name = "web";
           src = webBuildUnprefixed;
+          runnerScript = runnerScript "node server.js";
           installPhase = ''
             mkdir -p $out/web/.next/static
             cp -rfL next_build/standalone/. $out/web/
             cp -rfL next_build/static/. $out/web/.next/static/
+            cp -rfL $runnerScript $out/web/run.sh
+            chmod +x $out/web/run.sh
           '';
         };
+
+        # Reverse proxy (not for production)
+        reverseProxyBuild = pkgs.stdenv.mkDerivation {
+          name = "proxy";
+          unpackPhase = "true";
+          reverseProxyConfig = pkgs.writeText "tinyproxy.conf" ''
+            Port 8888
+            Listen 127.0.0.1
+            Timeout 600
+            Allow 127.0.0.1
+            ReversePath "/api"	"http://localhost:8080/"
+            ReversePath "/"	"http://localhost:3000/"
+          '';
+          runnerScript = runnerScript "tinyproxy -d -c tinyproxy.conf";
+          installPhase = ''
+            mkdir -p $out/proxy
+            cp -rfL "$reverseProxyConfig" $out/proxy/tinyproxy.conf
+            cp -rfL "$runnerScript" $out/proxy/run.sh
+            chmod +x $out/proxy/run.sh
+          '';
+        };
+
+        # Debug runner script (not for production)
+        debugServerBuild = runnerScript ''
+          echo "Open debug server in http://localhost:8888/"
+          echo ""
+          ./server/run.sh &
+          P1=''$!
+          ./web/run.sh &
+          P2=''$!
+          ./proxy/run.sh &
+          P3=''$!
+          wait ''$P1 ''$P2 ''$P3
+        '';
 
         # Build which contains all individual builds
         allBuilds = pkgs.buildEnv {
           name = "zoop_all";
+          # All individual package builds
           paths = [
             cliBuild
             webBuildStandalone
+            serverBuild
+            reverseProxyBuild
           ] ++ pkgs.lib.optionals (!conciseBuild) [
             assetBuild
             engineWasmBuild
             webBuildFull
           ];
+          # Helper runner script to debug the production build
+          postBuild = ''
+            cp -rfL ${debugServerBuild} $out/run_server.sh
+          '';
         };
       in {
         # Export all built packages
@@ -225,6 +300,7 @@
         packages.engine = engineWasmBuild;
         packages.webStandalone = webBuildStandalone;
         packages.webFull = webBuildStandalone;
+        packages.server = serverBuild;
         packages.all = allBuilds;
 
         # Dev shell with tools for building manually
@@ -234,10 +310,13 @@
               engineBuildDependencies ++ 
               engineLinkedDependencies ++ 
               frontendBuildDependencies ++ 
-              frontendLinkedDependencies ++ [ 
+              frontendLinkedDependencies ++ [
+                pkgs.bash
                 pkgs.git
                 pkgs.vim
-              ]; 
+                pkgs.nodejs_20
+                pkgs.tinyproxy
+              ];
           };
         
         # Default package (result of nix build)

@@ -80,7 +80,7 @@ Frontend:
 - Install [Nix](https://nixos.org/download/)  
 - Enable [Nix flake support](https://nixos.wiki/wiki/Flakes)    
 - Run `nix develop` or `nix develop --ignore-environment` i.e. `nix develop -i`
-- _You now have the build-time dependencies available_
+- _You now have the build-time and runtime dependencies available_
 
 ### Development
 
@@ -92,10 +92,12 @@ Frontend:
 - Start frontend server with `cargo tauri dev` in `zoop_web`
 
 ### Release (with Nix)
-
-- Run `nix build`
-- Release files are in `result/`
-
+  
+- Build project with `nix build`  
+- Enter dev shell with `nix develop -i`  
+- _You now have the build-time and runtime dependencies available_
+- Run server with `./result/run_server.sh`  
+  
 ## Notes
 
 - The code is somewhat awful as it was written to achieve a result and not to look good.
