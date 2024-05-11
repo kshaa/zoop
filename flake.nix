@@ -34,16 +34,17 @@
         # Rust build tools
         cargo = pkgs.cargo;
         rustc = pkgs.cargo;
-        fenixPkgs = fenix.packages.${system};
-        toolchain = fenixPkgs.combine [
+        fenixSystem = fenix.packages.${system};
+        fenixPkgs = fenix.inputs.nixpkgs.legacyPackages.${system};
+        toolchain = fenixSystem.combine [
           # Default Rust tools
-          fenixPkgs.stable.cargo
-          fenixPkgs.stable.clippy
-          fenixPkgs.stable.rust-src
-          fenixPkgs.stable.rustc
-          fenixPkgs.stable.rustfmt
+          fenixSystem.stable.cargo
+          fenixSystem.stable.clippy
+          fenixSystem.stable.rust-src
+          fenixSystem.stable.rustc
+          fenixSystem.stable.rustfmt
           # Needed by engine WASM build
-          fenixPkgs.targets.wasm32-unknown-unknown.stable.rust-std
+          fenixSystem.targets.wasm32-unknown-unknown.stable.rust-std
         ];
         rustPlatform = pkgs.makeRustPlatform {
           inherit toolchain cargo rustc;
@@ -57,9 +58,9 @@
           # needed by engine WASM build
           toolchain 
           # needed by engine WASM build
-          pkgs.wasm-pack 
+          fenixPkgs.wasm-pack 
           # needed by engine WASM build
-          pkgs.wasm-bindgen-cli
+          fenixPkgs.wasm-bindgen-cli
         ];
 
         # Engine runtime / dynamically-linked dependencies
@@ -76,14 +77,14 @@
         # Frontend compile-time dependencies
         frontendBuildDependencies = engineBuildDependencies ++ [
           # Frontend build tool
-          pkgs.cargo-tauri
+          fenixPkgs.cargo-tauri
         ];
         
         # Frontend runtime / dynamically-linked dependencies
         # i.e. Tauri dependencies
         frontendLinkedDependencies = engineLinkedDependencies ++ [
           # Build tool
-          pkgs.cargo-tauri
+          fenixPkgs.cargo-tauri
           # glib-sys crate
           pkgs.dbus-glib
           # soup2-sys crate
@@ -124,12 +125,13 @@
           extraPrefix = "/engine";
           buildType = cargoBuildType;
           version = version;
-          cargoSha256 = "sha256-RXKME2MKJtYo5Dk2YN2jgxm550HleX/JdN1Ysl/d0M0=";
+          cargoSha256 = "sha256-QLUJGOkwmdVkVaumr+ZQsmrrvN/kAhr82F37wSHdIVo=";
           nativeBuildInputs = engineBuildDependencies;
           buildInputs = engineLinkedDependencies;
           buildAndTestSubdir = "zoop_engine";
           # Compile the wasm by running wasm-pack
           WASM_PACK_CACHE = ".wasm-pack-cache";
+          RUST_LOG = "debug";
           dontCargoBuild = true;
           buildPhase = ''
             runHook preBuild
