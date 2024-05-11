@@ -34,8 +34,19 @@
         pkgs = nixpkgs.legacyPackages.${system};
 
         # Source reading with filters aliases
-        sourceByRegex = pkgs.lib.sourceByRegex;
-        gitignoreSource = gitignore.lib.gitignoreSource;
+        cleanSourceWith = pkgs.lib.cleanSourceWith;
+        gitignoreFilterWith = gitignore.lib.gitignoreFilterWith;
+        sourceFilter = src: gitignoreFilterWith {
+          basePath = src;
+          extraRules = ''
+            flake.nix
+            README.md
+          '';
+        };
+        gitignoreSource' = src: cleanSourceWith {
+          filter = sourceFilter src;
+          src = src;
+        };
 
         # Rust build tools
         cargo = pkgs.cargo;
@@ -115,9 +126,9 @@
         };
 
         # Build with CLI tool (used either manually or by frontend in native mode)
-        cliBuild = buildRustPackage {
+        cliBuildUnprefixed = buildRustPackage {
           pname = "zoop_cli";
-          src = gitignoreSource ./.;
+          src = gitignoreSource' ./.;
           extraPrefix = "/cli";
           buildType = cargoBuildType;
           version = version;
@@ -127,11 +138,18 @@
           buildAndTestSubdir = "zoop_cli";
           extraOutputsToInstall = ["zoop_cli/assets"];
         };
+        cliBuild = pkgs.buildEnv {
+          name = "cli";
+          extraPrefix = "/cli";
+          paths = [
+            cliBuildUnprefixed
+          ];
+        };
 
         # Build with engine WASM output
         engineWasmBuild = buildRustPackage {
           pname = "zoop_engine";
-          src = gitignoreSource ./.;
+          src = gitignoreSource' ./.;
           buildType = cargoBuildType;
           version = version;
           cargoSha256 = "sha256-HMxtqjLuro6Z96IOJLwqcNBVNPRerRYbWmPinef6mAU=";
@@ -156,7 +174,7 @@
 
         # Build with NextJS standalone server
         webBuildUnprefixed = buildNpmPackage {
-          src = gitignoreSource ./zoop_web;
+          src = gitignoreSource' ./zoop_web;
           npmBuild = ''
             # Copy WASM engine
             cp -rf "${engineWasmBuild}/engine/." "./public/"
@@ -168,7 +186,7 @@
           '';
         };
         webBuild = pkgs.buildEnv {
-          name = "/web";
+          name = "web";
           extraPrefix = "/web";
           paths = [
             webBuildUnprefixed
