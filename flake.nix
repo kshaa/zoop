@@ -1,25 +1,27 @@
 {
   description = "Real-time racing game zoop";
 
-  # Another interesting way to debug the flake might be by using the nix repl
-  # $ nix repl 
-  # > zoop = builtins.getFlake "./." # Load the flake from root repo
-  # > zoop.<tab>
-
   # Dependencies for building everything in the flake
   inputs = {
     # All packages in the nix repo
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
     # Utilities for building nix flakes for multiple architectures
     flake-utils.url = "github:numtide/flake-utils";
-    # Helper for building Rust packages with nix
+    # Helper for creating custom Rust toolchains
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Helper for building Node packages
+    nixNpmBuildPackage.url = "github:serokell/nix-npm-buildpackage";
+    # Helper for caching (avoid re-building by ignoring gitignored files)
+    gitignore = {
+      url = "github:hercules-ci/gitignore.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, fenix, flake-utils }:
+  outputs = { self, nixpkgs, fenix, flake-utils, nixNpmBuildPackage, gitignore }:
     # Build outputs for each default system
     # by default that is ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"]
     flake-utils.lib.eachDefaultSystem (system:
@@ -28,8 +30,12 @@
         version = "0.1.0";
         cargoBuildType = "release"; # cargo build --release or --debug
 
-        # Aliases
+        # System packages
         pkgs = nixpkgs.legacyPackages.${system};
+
+        # Source reading with filters aliases
+        sourceByRegex = pkgs.lib.sourceByRegex;
+        gitignoreSource = gitignore.lib.gitignoreSource;
 
         # Rust build tools
         cargo = pkgs.cargo;
@@ -50,6 +56,10 @@
           inherit toolchain cargo rustc;
         };
         buildRustPackage = rustPlatform.buildRustPackage;
+
+        # NodeJS build tools
+        bp = pkgs.callPackage nixNpmBuildPackage {};
+        buildNpmPackage = bp.buildNpmPackage;
 
         # Engine compile-time dependencies
         engineBuildDependencies = [
@@ -107,11 +117,11 @@
         # Build with CLI tool (used either manually or by frontend in native mode)
         cliBuild = buildRustPackage {
           pname = "zoop_cli";
-          src = ./.;
+          src = gitignoreSource ./.;
           extraPrefix = "/cli";
           buildType = cargoBuildType;
           version = version;
-          cargoSha256 = "sha256-xRCIFr/7MnfFL7vpgO6OhKPWr4WhD8talfKOqB/AtqI=";
+          cargoSha256 = "sha256-4AUlVsEhOqzm8oMXNbP2Qs4ZktVuZTw1+W7p0YRCYv8=";
           nativeBuildInputs = engineBuildDependencies;
           buildInputs = engineLinkedDependencies;
           buildAndTestSubdir = "zoop_cli";
@@ -121,8 +131,7 @@
         # Build with engine WASM output
         engineWasmBuild = buildRustPackage {
           pname = "zoop_engine";
-          src = ./.;
-          extraPrefix = "/engine";
+          src = gitignoreSource ./.;
           buildType = cargoBuildType;
           version = version;
           cargoSha256 = "sha256-HMxtqjLuro6Z96IOJLwqcNBVNPRerRYbWmPinef6mAU=";
@@ -137,11 +146,33 @@
             runHook preBuild
             (
               set -x
-              wasm-pack build --mode no-install ./zoop_engine --target web --${cargoBuildType} --out-dir $out
+              mkdir -p $out/engine
+              wasm-pack build --mode no-install ./zoop_engine --target web --${cargoBuildType} --out-dir $out/engine
             )
             runHook postBuild
           '';
           installPhase = ":";
+        };
+
+        # Build with NextJS standalone server
+        webBuildUnprefixed = buildNpmPackage {
+          src = gitignoreSource ./zoop_web;
+          npmBuild = ''
+            # Copy WASM engine
+            cp -rf "${engineWasmBuild}/engine/." "./public/"
+            cp -rf "${engineWasmBuild}/engine/." "./src/services/"
+            # Copy assets
+            cp -rf "${assetBuild}/assets/." "./public/"
+            # Build server
+            npm run build
+          '';
+        };
+        webBuild = pkgs.buildEnv {
+          name = "/web";
+          extraPrefix = "/web";
+          paths = [
+            webBuildUnprefixed
+          ];
         };
 
         # Build which contains all individual builds
@@ -149,16 +180,18 @@
           name = "zoop_all";
           paths = [
             assetBuild
-            # cliBuild
+            cliBuild
             engineWasmBuild
+            webBuild
           ];
         };
       in {
         # Export all built packages
-        packages.zoopAssets = assetBuild;
-        packages.zoopCli = cliBuild;
-        packages.zoopEngine = engineWasmBuild;
-        packages.zoopAll = allBuilds;
+        packages.assets = assetBuild;
+        packages.cli = cliBuild;
+        packages.engine = engineWasmBuild;
+        packages.web = webBuild;
+        packages.all = allBuilds;
 
         # Dev shell with tools for building manually
         devShells.default =

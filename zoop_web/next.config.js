@@ -12,6 +12,7 @@ const nextConfig = {
     zoopHttpServer: `http://localhost:3000`,
     launcherHttpServer: `http://localhost:3000`,
   },
+  output: 'standalone',
   async rewrites() {
     return [
       // Backend server
